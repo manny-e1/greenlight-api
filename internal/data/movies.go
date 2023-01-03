@@ -48,6 +48,65 @@ func (m MovieModel) Insert(movie *Movie) error {
 	defer cancel()
 	return m.DB.QueryRowContext(ctx, query, args...).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
 }
+
+func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*Movie, error) {
+	/*
+		- The to_tsvector('simple', title) function takes a movie title and splits it into lexemes.
+			We specify the simple configuration, which means that the lexemes are just lowercase
+			versions of the words in the title†. For example, the movie title "The Breakfast Club"
+			would be split into the lexemes 'breakfast' 'club' 'the'.
+		- The plainto_tsquery('simple', $1) function takes a search value and turns it into a
+			formatted query term that PostgreSQL full-text search can understand. It normalizes thesearch value (again using the simple configuration), strips any special characters, and
+			inserts the and operator & between the words. As an example, the search value "The Club"
+			would result in the query term 'the' & 'club'.
+		- The @@ operator is the matches operator. In our statement we are using it to check whether
+			the generated query term matches the lexemes. To continue the example, the query term
+			'the' & 'club' will match rows which contain both lexemes 'the' and 'club' .
+	*/
+	query := `
+		SELECT id, created_at, title, year, runtime, genres, version
+		FROM movies
+		WHERE (to_tsvector('simple', title) @@ plainto_tsquery('simple', $1) OR $1 = '')
+		AND (genres @> $2 OR $2 = '{}')
+		ORDER BY id`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	rows, err := m.DB.QueryContext(ctx, query, title, pq.Array(genres))
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	movies := []*Movie{}
+
+	for rows.Next() {
+		var movie Movie
+
+		err := rows.Scan(
+			&movie.ID,
+			&movie.CreatedAt,
+			&movie.Title,
+			&movie.Year,
+			&movie.Runtime,
+			pq.Array(&movie.Genres),
+			&movie.Version,
+		)
+		if err != nil {
+			return nil, err
+		}
+		movies = append(movies, &movie)
+
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return movies, nil
+
+}
+
 func (m MovieModel) Get(id int64) (*Movie, error) {
 	if id < 1 {
 		return nil, ErrRecordNotFound
