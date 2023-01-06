@@ -12,12 +12,18 @@ func (app *application) routes() http.Handler {
 	router.NotFound = http.HandlerFunc(app.notFoundResponse)
 	router.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedResponse)
 
-	router.Handler(http.MethodGet, "/v1/healthcheck", http.HandlerFunc(app.healthCheckHandler))
-	router.Handler(http.MethodPost, "/v1/movies", http.HandlerFunc(app.createMovieHandler))
-	router.Handler(http.MethodGet, "/v1/movies", http.HandlerFunc(app.listMovieHandler))
-	router.Handler(http.MethodGet, "/v1/movies/:id", http.HandlerFunc(app.showMovieHandler))
+	//healthcheck
+	router.HandlerFunc(http.MethodGet, "/v1/healthcheck", app.healthCheckHandler)
+
+	//movie
+	router.HandlerFunc(http.MethodPost, "/v1/movies", app.createMovieHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/movies", app.listMovieHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/movies/:id", app.showMovieHandler)
 	router.HandlerFunc(http.MethodPatch, "/v1/movies/:id", app.updateMovieHandler)
 	router.HandlerFunc(http.MethodDelete, "/v1/movies/:id", app.deleteMovieHandler)
+
+	//user
+	router.HandlerFunc(http.MethodPost, "/v1/users", app.registerUserHandler)
 
 	return app.recoverPanic(app.rateLimit(router))
 }
