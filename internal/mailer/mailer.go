@@ -9,6 +9,7 @@ import (
 	"github.com/go-mail/mail/v2"
 )
 
+//go:embed "templates"
 var templateFS embed.FS
 
 type Mailer struct {
@@ -24,7 +25,7 @@ func New(host string, port int, username, password, sender string) Mailer {
 }
 
 func (m Mailer) Send(recipient, templateFile string, data any) error {
-	tmpl, err := template.New("email").ParseFS(templateFS, "templates"+templateFile)
+	tmpl, err := template.New("email").ParseFS(templateFS, "templates/"+templateFile)
 	if err != nil {
 		return err
 	}
@@ -53,10 +54,15 @@ func (m Mailer) Send(recipient, templateFile string, data any) error {
 	msg.SetBody("text/plain", plainBody.String())
 	msg.AddAlternative("text/html", htmlBody.String())
 
-	err = m.dialer.DialAndSend(msg)
-	if err != nil {
-		return err
+	for i := 0; i < 3; i++ {
+		err = m.dialer.DialAndSend(msg)
+		if err == nil {
+			return nil
+		}
+
+		time.Sleep(500 * time.Millisecond)
 	}
 
-	return nil
+	return err
+
 }
