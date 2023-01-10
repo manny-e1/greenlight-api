@@ -54,5 +54,5 @@ func (m PermissionModel) GetAllForUser(userID int64) (Permissions, error) {
 		return nil, err
 	}
 
-	return permission, nil
+	return permissions, nil
 }
