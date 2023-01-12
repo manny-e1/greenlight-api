@@ -16,7 +16,6 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
-
 	err := app.readJSON(w, r, &input)
 	if err != nil {
 		app.badRequestResponse(w, r, err)
